@@ -17,7 +17,7 @@ async function startServer() {
   const app = express();
   app.use(
     cors({
-      origin: "http://localhost:5173", // Add your frontend origin
+      origin: "http://localhost:5173", 
       credentials: true,
     })
   );
