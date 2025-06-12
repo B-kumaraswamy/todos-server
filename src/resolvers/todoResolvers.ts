@@ -23,9 +23,16 @@ export default {
   Query: {
     todos: async (_: any, __: any, context: Context) => {
       const user = requireAuth(context);
-      return await Todo.find({ userId: user.autho0Id }).sort({ createdAt: -1 });
+      return await Todo.find({ userId: user._id }).sort({ createdAt: -1 });
     },
 
+    /**
+     * Returns a single todo by its ID. The todo must be created by the current user.
+     * @throws {GraphQLError} If the ID is invalid or the todo does not exist.
+     * @throws {GraphQLError} If the current user is not authorized to view the todo.
+     * @param {string} id The ID of the todo to retrieve.
+     * @returns {Todo} The retrieved todo.
+     */
     todo: async (_: any, { id }: { id: string }, context: Context) => {
       const user = requireAuth(context); // Ensure the user is authenticated
 
@@ -44,7 +51,7 @@ export default {
         });
       }
 
-      if (todo.userId !== user.autho0Id) {
+      if (todo.userId !== user._id.toString()) {
         throw new GraphQLError("You are not authorized to view this todo", {
           extensions: { code: "UNAUTHORIZED" },
         });
@@ -59,7 +66,7 @@ export default {
       context: Context
     ) => {
       const user = requireAuth(context); // Ensure the user is authenticated
-      return await Todo.find({ userId: user.autho0Id, status }).sort({
+      return await Todo.find({ userId: user._id, status }).sort({
         createdAt: -1,
       });
     },
@@ -70,7 +77,7 @@ export default {
       context: Context
     ) => {
       const user = requireAuth(context); // Ensure the user is authenticated
-      return await Todo.find({ userId: user.autho0Id, priority }).sort({
+      return await Todo.find({ userId: user._id, priority }).sort({
         createdAt: -1,
       });
     },
@@ -101,7 +108,7 @@ export default {
       const newTodo = new Todo({
         ...input,
         dueDate,
-        userId: user.autho0Id,
+        userId: user._id,
       });
       await newTodo.save(); // Save the new todo to the database
       return newTodo; // Return the newly created todo
@@ -142,7 +149,7 @@ export default {
         });
       }
 
-      if (todo.userId !== user.autho0Id) {
+      if (todo.userId !== user._id.toString()) {
         throw new GraphQLError("You are not authorized to update this todo", {
           extensions: { code: "UNAUTHORIZED" },
         });
@@ -157,7 +164,7 @@ export default {
     },
 
     deleteTodo: async (_: any, { id }: { id: string }, context: Context) => {
-      const user = requireAuth(context); // Ensure the user is authenticated
+      const user = requireAuth(context);
 
       if (!mongoose.Types.ObjectId.isValid(id)) {
         throw new GraphQLError("Invalid todo ID", {
@@ -173,22 +180,24 @@ export default {
         });
       }
 
-      if (todo.userId !== user.autho0Id) {
+      if (todo.userId !== user._id.toString()) {
         throw new GraphQLError("You are not authorized to delete this todo", {
           extensions: { code: "UNAUTHORIZED" },
         });
       }
-      const deletedTodo = await Todo.findByIdAndDelete(id);
-      return true; // Return true to indicate successful deletion
-    },
-  },
 
-  deleteCompletedTodos: async (_: any, __: any, context: Context) => {
-    const user = requireAuth(context); // Ensure the user is authenticated
-    const result = await Todo.deleteMany({
-      userId: user.autho0Id,
-      status: Status.DONE,
-    });
-    return result.deletedCount; // Return the number of deleted todos
+      // Delete and return a boolean
+      await Todo.findByIdAndDelete(id);
+      return true; // Return a boolean, not the Todo object
+    },
+
+    deleteCompletedTodos: async (_: any, __: any, context: Context) => {
+      const user = requireAuth(context); // Ensure the user is authenticated
+      const result = await Todo.deleteMany({
+        userId: user._id,
+        status: Status.DONE,
+      });
+      return result.deletedCount; // Return the number of deleted todos
+    },
   },
 };

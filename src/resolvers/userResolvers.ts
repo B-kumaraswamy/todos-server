@@ -5,28 +5,75 @@ export default {
   Query: {
     me: async (_: any, __: any, context: Context) => {
       const user = requireAuth(context); // Ensure the user is authenticated
+      console.debug(` me: > user---->`, user);
       return user; // Return the authenticated user
     },
   },
 
   Mutation: {
+    // In your userResolvers.ts file
     updateUser: async (
       _: any,
       { name, picture }: { name?: string; picture?: string },
       context: Context
     ) => {
-      const user = requireAuth(context); // Ensure the user is authenticated
+      const user = requireAuth(context);
 
-      const updateData: { name?: string; picture?: string } = {};
-      if (name) updateData.name = name;
-      if (picture) updateData.picture = picture;
+      try {
+        // Get the complete user document first
+        const currentUser = await User.findById(user._id);
 
-      const updatedUser = await User.findByIdAndUpdate(
-        user.id,
-        updateData,
-        { new: true, runValidators: true } // Return the updated user and validate the updated data
-      );
-      return updatedUser; // Return the updated user
+        if (!currentUser) {
+          throw new Error(`User not found with ID: ${user._id}`);
+        }
+
+        // Only update the fields that were provided, preserving all others
+        if (name !== undefined) currentUser.name = name;
+        if (picture !== undefined) currentUser.picture = picture;
+
+        // IMPORTANT: Use save() to ensure all fields are preserved
+        await currentUser.save();
+
+        // Fetch the user again to ensure we have the most up-to-date data
+        const updatedUser = await User.findById(user._id);
+
+        return updatedUser;
+      } catch (error) {
+        console.error("Error updating user:", error);
+        throw error;
+      }
+    },
+    // Add this to your Mutation object in userResolvers.ts
+    createUser: async (
+      _: any,
+      {
+        auth0Id,
+        email,
+        name,
+        picture,
+      }: { auth0Id: string; email: string; name?: string; picture?: string },
+      _context: Context
+    ) => {
+      try {
+        // Check if user already exists
+        const existingUser = await User.findOne({ auth0Id });
+        if (existingUser) {
+          return existingUser; // Return existing user if found
+        }
+
+        // Create a new user
+        const newUser = await User.create({
+          auth0Id,
+          email,
+          name: name || email.split("@")[0], // Fallback to email username if no name
+          picture: picture || "",
+        });
+
+        return newUser;
+      } catch (error) {
+        console.error("Error creating user:", error);
+        throw error;
+      }
     },
   },
 };
