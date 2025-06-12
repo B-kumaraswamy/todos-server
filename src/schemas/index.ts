@@ -1,6 +1,3 @@
-import { ApolloServer } from "@apollo/server";
-import { expressMiddleware } from "@apollo/server/express4";
-
 const typeDefs = `
 enum Priority {
 low
@@ -61,12 +58,12 @@ todosByPriority(priority: Priority!): [Todo!]!
 }
 
 type Mutation {
-updateUser(name: String, picture: String): User
-createTodo(input: TodoInput!): Todo
-updateTodo(id: ID!, input: TodoUpdateInput!): Todo
-deleteTodo(id: ID!): Todo
-deleteCompletedTodos: Int!
+ createUser(auth0Id: String!, email: String!, name: String!, picture: String): User
+  updateUser(name: String, picture: String): User
+  createTodo(input: TodoInput!): Todo
+  updateTodo(id: ID!, input: TodoUpdateInput!): Todo
+  deleteTodo(id: ID!): Boolean!  # Changed from Todo to Boolean!
+  deleteCompletedTodos: Int!
 }
 `;
-
-export default typeDefs;    
+export default typeDefs;

@@ -15,7 +15,17 @@ connectDB();
 
 async function startServer() {
   const app = express();
+  app.use(
+    cors({
+      origin: "http://localhost:5173", // Add your frontend origin
+      credentials: true,
+    })
+  );
+  app.use(express.json()); // Parse JSON bodies
 
+  app.get("/health", (_, res) => {
+    res.status(200).send("Server is running");
+  });
   const server = new ApolloServer({
     typeDefs,
     resolvers,
@@ -23,18 +33,15 @@ async function startServer() {
   });
 
   await server.start();
-  app.use(cors());
-  app.use(express.json()); // Parse JSON bodies
-  app.get("/health", (_, res) => {
-    res.status(200).send("Server is running");
-  });
 
-//   app.use("/graphql", checkJwt);
+  app.use("/graphql", checkJwt);
 
+  
   app.use(
     "/graphql",
     expressMiddleware(server, {
       context: async ({ req }): Promise<Context> => {
+        console.debug(` context: > req---->`, req)
         const user = await getUser(req as unknown as AuthRequest); // Get the user from the request
         return {
           req: req as unknown as AuthRequest,
@@ -43,6 +50,7 @@ async function startServer() {
         };
       },
     }) as unknown as express.RequestHandler // Explicitly cast to RequestHandler
+    
   );
 
   app.listen(process.env.PORT || 4000, () => {
@@ -53,4 +61,3 @@ async function startServer() {
 startServer().catch((err) => {
   console.error("Error starting server", err);
 });
-
